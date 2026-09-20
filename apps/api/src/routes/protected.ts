@@ -1,12 +1,15 @@
 import { Router } from 'express';
+import { PrismaClient } from '@prisma/client';
 import type { AuthService } from '../services/auth.js';
 import { authenticate, requireRoles } from '../middleware/auth.js';
+import { partnerRouter } from './partner.js';
 
-export const protectedRouter = (auth: AuthService) => {
+export const protectedRouter = (auth: AuthService, prisma: PrismaClient) => {
   const router = Router();
   router.use(authenticate(auth));
   router.get('/admin/overview', requireRoles('SUPER_ADMIN', 'CURATOR', 'OPERATIONS'), (req, res) => res.json({ area: 'admin', viewer: req.user }));
   router.get('/partner/overview', requireRoles('PARTNER'), (req, res) => res.json({ area: 'partner', viewer: req.user }));
+  router.use('/partner', partnerRouter(prisma, auth));
   router.get('/nazhir/overview', requireRoles('NAZHIR_VIEWER'), (req, res) => res.json({ area: 'nazhir', viewer: req.user, readOnly: true }));
   return router;
 };

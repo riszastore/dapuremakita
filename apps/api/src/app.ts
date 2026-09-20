@@ -26,7 +26,7 @@ export const createApp = (auth?: AuthService, catalog?: CatalogRepository) => {
   app.use('/public', publicRouter(catalogRepository));
   app.use('/auth/login', rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false }));
   app.use('/auth', authRouter(authService));
-  app.use('/api', protectedRouter(authService));
+  app.use('/api', protectedRouter(authService, prisma));
   app.use(notFound);
   app.use(errorHandler);
   return app;

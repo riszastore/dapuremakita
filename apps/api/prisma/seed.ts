@@ -12,6 +12,7 @@ const users = [
   ['curator@dapuremakita.local', 'Curator Demo', Role.CURATOR],
   ['operations@dapuremakita.local', 'Operations Demo', Role.OPERATIONS],
   ['partner@dapuremakita.local', 'Partner Demo', Role.PARTNER],
+  ['partner.two@dapuremakita.local', 'Partner Dua Demo', Role.PARTNER],
   ['customer@dapuremakita.local', 'Customer Demo', Role.CUSTOMER],
   ['nazhir@dapuremakita.local', 'Nazhir Viewer Demo', Role.NAZHIR_VIEWER]
 ] as const;
@@ -24,7 +25,12 @@ const categories = await Promise.all([
   prisma.category.upsert({ where: { slug: 'pangan' }, update: { name: 'Pangan' }, create: { name: 'Pangan', slug: 'pangan' } }),
   prisma.category.upsert({ where: { slug: 'rumah' }, update: { name: 'Rumah & Gaya Hidup' }, create: { name: 'Rumah & Gaya Hidup', slug: 'rumah' } })
 ]);
-const partner = await prisma.partner.upsert({ where: { slug: 'dapur-ibu-nusantara' }, update: {}, create: { name: 'Dapur Ibu Nusantara', slug: 'dapur-ibu-nusantara', description: 'Kolektif pengolah pangan rumahan yang tumbuh bersama kurasi dan pendampingan.', websiteUrl: null } });
+const partnerUser = await prisma.user.findUniqueOrThrow({ where: { email: 'partner@dapuremakita.local' } });
+const secondPartnerUser = await prisma.user.findUniqueOrThrow({ where: { email: 'partner.two@dapuremakita.local' } });
+const partner = await prisma.partner.upsert({ where: { slug: 'dapur-ibu-nusantara' }, update: { userId: partnerUser.id }, create: { name: 'Dapur Ibu Nusantara', slug: 'dapur-ibu-nusantara', description: 'Kolektif pengolah pangan rumahan yang tumbuh bersama kurasi dan pendampingan.', websiteUrl: null, userId: partnerUser.id } });
+const secondPartner = await prisma.partner.upsert({ where: { slug: 'kelompok-pagi-sejahtera' }, update: { userId: secondPartnerUser.id }, create: { name: 'Kelompok Pagi Sejahtera', slug: 'kelompok-pagi-sejahtera', description: 'Mitra kedua untuk verifikasi isolasi tenant.', websiteUrl: null, userId: secondPartnerUser.id } });
+await prisma.partnerProfile.upsert({ where: { partnerId: partner.id }, update: {}, create: { partnerId: partner.id, contactName: 'Partner Demo', phone: '081234567890', address: 'Jl. Nusantara 1', city: 'Bandung', province: 'Jawa Barat', postalCode: '40111' } });
+await prisma.partnerProfile.upsert({ where: { partnerId: secondPartner.id }, update: {}, create: { partnerId: secondPartner.id, contactName: 'Partner Dua Demo', phone: '081234567891', address: 'Jl. Pagi 2', city: 'Bogor', province: 'Jawa Barat', postalCode: '16111' } });
 const products = [
   { name: 'Sambal Kecombrang', slug: 'sambal-kecombrang', price: 38000, description: 'Sambal segar dengan kecombrang pilihan, dibuat dalam batch kecil.', imageUrl: '/images/sambal-kecombrang.jpg', status: ProductStatus.ACTIVE, categoryId: categories[0].id, partnerId: partner.id },
   { name: 'Granola Kelapa Jawa', slug: 'granola-kelapa-jawa', price: 65000, description: 'Granola renyah dengan kelapa dan gula kelapa dari kebun mitra.', imageUrl: '/images/granola-kelapa.jpg', status: ProductStatus.ACTIVE, categoryId: categories[0].id, partnerId: partner.id },

@@ -1,6 +1,6 @@
 # Dapuremakita
 
-Platform kurasi, pemasaran, dan pengelolaan produk UMKM terpilih. Batch 1 menyediakan foundation monorepo, autentikasi cookie HttpOnly, dan akses berbasis role. Batch 2 menambahkan public website, katalog ACTIVE-only, partner, dan narasi ekosistem.
+Platform kurasi, pemasaran, dan pengelolaan produk UMKM terpilih. Batch 1 menyediakan foundation monorepo, autentikasi cookie HttpOnly, dan akses berbasis role. Batch 2 menambahkan public website dan katalog ACTIVE-only. Batch 3 menambahkan portal mitra dengan tenant isolation, legalitas, pengajuan produk, upload aman, HPP, kapasitas, dan riwayat revisi.
 
 ## Quick start
 
@@ -19,12 +19,15 @@ npm run dev
 
 Web tersedia di `http://localhost:5173`, API di `http://localhost:3000`. Semua akun seed memakai password lokal `Demo123!`; jangan gunakan password tersebut di luar development.
 
+Seed menyediakan dua akun PARTNER terisolasi: `partner@dapuremakita.local` dan `partner.two@dapuremakita.local`. Login PARTNER diarahkan ke `/portal/mitra`; subroute portal mencakup `/profil`, `/legalitas`, `/pengajuan`, `/pengajuan/new`, dan detail/edit pengajuan.
+
 Kredensial PostgreSQL di `docker-compose.yml` (`dapuremakita` / `dapuremakita`) hanya untuk development lokal. Untuk deployment, gunakan secret manager, password unik, database private, dan `VITE_API_URL` yang menunjuk ke API HTTPS. `VITE_API_URL` kosong memakai proxy Vite development.
 
 ## Workspace
 
 - `apps/api`: Express 5, TypeScript, Prisma PostgreSQL, Zod, bcrypt, JWT, cookie HttpOnly.
 - `apps/web`: React 19 + Vite + TypeScript, website publik responsif berbahasa Indonesia dan auth CTA Batch 1.
+- Portal mitra: seluruh endpoint `/api/partner` menurunkan owner dari session JWT; partner lain selalu 404 dan role non-PARTNER 403. File development disimpan di `var/uploads/`, dengan metadata object key saja di database.
 - `docker-compose.yml`: PostgreSQL 16 lokal.
 
 ## Public API
@@ -38,3 +41,5 @@ Route website: `/`, `/katalog`, `/kategori/:slug`, `/katalog/:slug`, `/tentang`,
 `npm run lint`, `npm test`, `npm run build`, `npm run prisma:generate`, dan `npm audit --audit-level=high` menjalankan pemeriksaan utama. Detail foundation auth ada di [BATCH_1_REPORT.md](BATCH_1_REPORT.md), sedangkan scope public website ada di [BATCH_2_REPORT.md](BATCH_2_REPORT.md).
 
 Smoke API setelah database aktif: `curl http://localhost:3000/health`, login dengan cookie jar (`curl -c /tmp/dm.cookies -H 'Origin: http://localhost:5173' -H 'Content-Type: application/json' -d '{"email":"partner@dapuremakita.local","password":"Demo123!"}' http://localhost:3000/auth/login`), lalu panggil `/auth/me` dan endpoint role dengan `-b /tmp/dm.cookies`. Logout memakai `POST /auth/logout` dan header `Origin` yang sama.
+
+Detail scope dan hasil gate Batch 3 ada di [BATCH_3_REPORT.md](BATCH_3_REPORT.md).
