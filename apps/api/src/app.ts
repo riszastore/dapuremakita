@@ -5,13 +5,14 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
 import { PrismaClient } from '@prisma/client';
-import { PrismaUserRepository } from './repository.js';
+import { PrismaCatalogRepository, PrismaUserRepository, type CatalogRepository } from './repository.js';
 import { AuthService } from './services/auth.js';
 import { authRouter } from './routes/auth.js';
 import { protectedRouter } from './routes/protected.js';
 import { errorHandler, notFound } from './middleware/errors.js';
+import { publicRouter } from './routes/public.js';
 
-export const createApp = (auth = new AuthService(new PrismaUserRepository(new PrismaClient()))) => {
+export const createApp = (auth = new AuthService(new PrismaUserRepository(new PrismaClient())), catalog: CatalogRepository = new PrismaCatalogRepository(new PrismaClient())) => {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
@@ -19,6 +20,7 @@ export const createApp = (auth = new AuthService(new PrismaUserRepository(new Pr
   app.use(express.json({ limit: '32kb' }));
   app.use(cookieParser());
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  app.use('/public', publicRouter(catalog));
   app.use('/auth/login', rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false }));
   app.use('/auth', authRouter(auth));
   app.use('/api', protectedRouter(auth));

@@ -1,6 +1,6 @@
 # Dapuremakita
 
-Platform kurasi, pemasaran, dan pengelolaan produk UMKM terpilih. Batch 1 menyediakan foundation monorepo, autentikasi cookie HttpOnly, dan akses berbasis role.
+Platform kurasi, pemasaran, dan pengelolaan produk UMKM terpilih. Batch 1 menyediakan foundation monorepo, autentikasi cookie HttpOnly, dan akses berbasis role. Batch 2 menambahkan public website, katalog ACTIVE-only, partner, dan narasi ekosistem.
 
 ## Quick start
 
@@ -24,11 +24,17 @@ Kredensial PostgreSQL di `docker-compose.yml` (`dapuremakita` / `dapuremakita`) 
 ## Workspace
 
 - `apps/api`: Express 5, TypeScript, Prisma PostgreSQL, Zod, bcrypt, JWT, cookie HttpOnly.
-- `apps/web`: React 19 + Vite + TypeScript, UI login responsif berbahasa Indonesia.
+- `apps/web`: React 19 + Vite + TypeScript, website publik responsif berbahasa Indonesia dan auth CTA Batch 1.
 - `docker-compose.yml`: PostgreSQL 16 lokal.
+
+## Public API
+
+`GET /public/categories`, `GET /public/products`, `GET /public/products/:slug`, dan `GET /public/partners` bersifat read-only. Katalog mendukung `search`, `category`, `page`, dan `limit` tervalidasi. Semua query produk memaksa `ProductStatus.ACTIVE` di server; product `DRAFT`, `REVIEW`, atau `INACTIVE` tidak tampil dan detail-nya 404.
+
+Route website: `/`, `/katalog`, `/katalog/:slug`, `/tentang`, `/kurasi`, `/mitra`, `/wakaf-produktif`, `/kemitraan`, dan `/login`. Detail implementasi dan hasil verifikasi ada di [BATCH_2_REPORT.md](BATCH_2_REPORT.md).
 
 ## Commands
 
-`npm run lint`, `npm test`, `npm run build`, `npm run prisma:generate`, dan `npm audit --audit-level=high` menjalankan pemeriksaan utama. Detail scope, endpoint, role matrix, security, dan limitation ada di [BATCH_1_REPORT.md](BATCH_1_REPORT.md).
+`npm run lint`, `npm test`, `npm run build`, `npm run prisma:generate`, dan `npm audit --audit-level=high` menjalankan pemeriksaan utama. Detail foundation auth ada di [BATCH_1_REPORT.md](BATCH_1_REPORT.md), sedangkan scope public website ada di [BATCH_2_REPORT.md](BATCH_2_REPORT.md).
 
 Smoke API setelah database aktif: `curl http://localhost:3000/health`, login dengan cookie jar (`curl -c /tmp/dm.cookies -H 'Origin: http://localhost:5173' -H 'Content-Type: application/json' -d '{"email":"partner@dapuremakita.local","password":"Demo123!"}' http://localhost:3000/auth/login`), lalu panggil `/auth/me` dan endpoint role dengan `-b /tmp/dm.cookies`. Logout memakai `POST /auth/logout` dan header `Origin` yang sama.

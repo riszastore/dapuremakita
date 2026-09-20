@@ -16,6 +16,13 @@ enum Role {
   NAZHIR_VIEWER
 }
 
+enum ProductStatus {
+  DRAFT
+  REVIEW
+  ACTIVE
+  INACTIVE
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -24,4 +31,40 @@ model User {
   role         Role
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  products  Product[]
+}
+
+model Partner {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String
+  websiteUrl  String?
+  createdAt   DateTime  @default(now())
+  products    Product[]
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  price       Int
+  description String
+  imageUrl    String
+  status      ProductStatus @default(DRAFT)
+  categoryId  String
+  partnerId   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  category    Category      @relation(fields: [categoryId], references: [id])
+  partner     Partner?      @relation(fields: [partnerId], references: [id])
+
+  @@index([status, categoryId])
 }

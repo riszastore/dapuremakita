@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, ProductStatus, Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
@@ -20,5 +20,17 @@ const passwordHash = await bcrypt.hash(password, 12);
 for (const [email, name, role] of users) {
   await prisma.user.upsert({ where: { email }, update: { name, role, passwordHash }, create: { email, name, role, passwordHash } });
 }
+const categories = await Promise.all([
+  prisma.category.upsert({ where: { slug: 'pangan' }, update: { name: 'Pangan' }, create: { name: 'Pangan', slug: 'pangan' } }),
+  prisma.category.upsert({ where: { slug: 'rumah' }, update: { name: 'Rumah & Gaya Hidup' }, create: { name: 'Rumah & Gaya Hidup', slug: 'rumah' } })
+]);
+const partner = await prisma.partner.upsert({ where: { slug: 'dapur-ibu-nusantara' }, update: {}, create: { name: 'Dapur Ibu Nusantara', slug: 'dapur-ibu-nusantara', description: 'Kolektif pengolah pangan rumahan yang tumbuh bersama kurasi dan pendampingan.', websiteUrl: null } });
+const products = [
+  { name: 'Sambal Kecombrang', slug: 'sambal-kecombrang', price: 38000, description: 'Sambal segar dengan kecombrang pilihan, dibuat dalam batch kecil.', imageUrl: '/images/sambal-kecombrang.jpg', status: ProductStatus.ACTIVE, categoryId: categories[0].id, partnerId: partner.id },
+  { name: 'Granola Kelapa Jawa', slug: 'granola-kelapa-jawa', price: 65000, description: 'Granola renyah dengan kelapa dan gula kelapa dari kebun mitra.', imageUrl: '/images/granola-kelapa.jpg', status: ProductStatus.ACTIVE, categoryId: categories[0].id, partnerId: partner.id },
+  { name: 'Keranjang Anyam Pagi', slug: 'keranjang-anyam-pagi', price: 145000, description: 'Keranjang serbaguna dari perajin lokal, ringan dan tahan lama.', imageUrl: '/images/keranjang-anyam.jpg', status: ProductStatus.ACTIVE, categoryId: categories[1].id, partnerId: partner.id },
+  { name: 'Teh Rempah Draft', slug: 'teh-rempah-draft', price: 42000, description: 'Produk yang masih dalam proses kurasi.', imageUrl: '/images/teh-rempah.jpg', status: ProductStatus.REVIEW, categoryId: categories[0].id, partnerId: partner.id }
+];
+for (const product of products) await prisma.product.upsert({ where: { slug: product.slug }, update: product, create: product });
 await prisma.$disconnect();
-console.log(`Seeded ${users.length} users. Local password: ${password}`);
+console.log(`Seeded ${users.length} users and ${products.length} products. Local password: ${password}`);
