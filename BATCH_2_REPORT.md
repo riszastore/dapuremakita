@@ -5,7 +5,9 @@
 Batch 2 menambahkan website publik Dapuremakita dalam bahasa Indonesia:
 
 - Homepage dengan hero, produk unggulan, alur kurasi, dan CTA kemitraan.
-- Katalog dengan search, filter kategori, pagination contract, loading/error/empty state.
+- Homepage mengambil kategori dan produk unggulan dari public API; tidak ada produk hardcoded yang dapat melewati ACTIVE filter.
+- Katalog dengan search, filter kategori, pagination controls, loading/error/empty state.
+- Route kategori eksplisit `/kategori/:slug` dengan not-found state.
 - Detail produk berdasarkan slug, route 404, format Rupiah, dan state not-found.
 - Halaman Tentang, Kurasi, Mitra, Wakaf Produktif, dan Kemitraan.
 - Responsive desktop/tablet/mobile layout, semantic HTML, visible keyboard focus, dan mobile navigation.
@@ -28,12 +30,14 @@ Repository memaksa `status: ACTIVE` pada query list dan detail. Product non-ACTI
 ## Verification
 
 - API tests: 15 passed.
-- Web tests: 5 passed.
+- Web DOM tests: 9 passed, mencakup semua halaman, category/detail/404, search/filter/pagination, loading/error/empty, SEO metadata, mobile menu/focus, dan auth compatibility.
 - Workspace lint: passed.
 - Workspace production build: passed.
 - Prisma validate: passed.
 - Migration deploy and seed: passed against PostgreSQL 16.
 - `npm audit --audit-level=high`: 0 vulnerabilities.
-- Runtime smoke: `/health` returned `{"status":"ok"}`; public catalog returned 3 ACTIVE products; REVIEW detail returned HTTP 404.
+- Runtime smoke: `/health` returned `{"status":"ok"}`; categories, combined search/category/pagination returned the expected active product; REVIEW detail returned HTTP 404; all SPA routes served successfully.
+- Seed dijalankan dua kali terhadap PostgreSQL 16 tanpa error; seluruh seed memakai upsert deterministik.
+- API app factory memakai satu Prisma client untuk default auth dan public catalog repositories.
 
-Known local limitation: browser visual smoke was exercised through the running Vite/API services and HTTP endpoint checks; no browser automation dependency exists in the repository.
+Known local limitation: environment ini tidak menyediakan Chromium/Playwright, sehingga browser automation/screenshot tidak dapat dijalankan. Sebagai pengganti yang dapat direproduksi, DOM interaction suite jsdom berjalan 9/9 dan runtime Vite/API route smoke berjalan terhadap services nyata.

@@ -12,7 +12,10 @@ import { protectedRouter } from './routes/protected.js';
 import { errorHandler, notFound } from './middleware/errors.js';
 import { publicRouter } from './routes/public.js';
 
-export const createApp = (auth = new AuthService(new PrismaUserRepository(new PrismaClient())), catalog: CatalogRepository = new PrismaCatalogRepository(new PrismaClient())) => {
+export const createApp = (auth?: AuthService, catalog?: CatalogRepository) => {
+  const prisma = new PrismaClient();
+  const authService = auth ?? new AuthService(new PrismaUserRepository(prisma));
+  const catalogRepository = catalog ?? new PrismaCatalogRepository(prisma);
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
@@ -20,10 +23,10 @@ export const createApp = (auth = new AuthService(new PrismaUserRepository(new Pr
   app.use(express.json({ limit: '32kb' }));
   app.use(cookieParser());
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
-  app.use('/public', publicRouter(catalog));
+  app.use('/public', publicRouter(catalogRepository));
   app.use('/auth/login', rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false }));
-  app.use('/auth', authRouter(auth));
-  app.use('/api', protectedRouter(auth));
+  app.use('/auth', authRouter(authService));
+  app.use('/api', protectedRouter(authService));
   app.use(notFound);
   app.use(errorHandler);
   return app;

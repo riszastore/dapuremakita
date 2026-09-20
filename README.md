@@ -31,7 +31,7 @@ Kredensial PostgreSQL di `docker-compose.yml` (`dapuremakita` / `dapuremakita`) 
 
 `GET /public/categories`, `GET /public/products`, `GET /public/products/:slug`, dan `GET /public/partners` bersifat read-only. Katalog mendukung `search`, `category`, `page`, dan `limit` tervalidasi. Semua query produk memaksa `ProductStatus.ACTIVE` di server; product `DRAFT`, `REVIEW`, atau `INACTIVE` tidak tampil dan detail-nya 404.
 
-Route website: `/`, `/katalog`, `/katalog/:slug`, `/tentang`, `/kurasi`, `/mitra`, `/wakaf-produktif`, `/kemitraan`, dan `/login`. Detail implementasi dan hasil verifikasi ada di [BATCH_2_REPORT.md](BATCH_2_REPORT.md).
+Route website: `/`, `/katalog`, `/kategori/:slug`, `/katalog/:slug`, `/tentang`, `/kurasi`, `/mitra`, `/wakaf-produktif`, `/kemitraan`, dan `/login`. Detail implementasi dan hasil verifikasi ada di [BATCH_2_REPORT.md](BATCH_2_REPORT.md).
 
 ## Commands
 

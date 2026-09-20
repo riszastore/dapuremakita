@@ -1,0 +1,8 @@
+.category-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.category-tile { display: flex; align-items: center; gap: 14px; min-height: 76px; padding: 16px; border: 1px solid #dfe4dc; border-radius: 8px; color: var(--green); background: #fff; text-decoration: none; }
+.category-tile span { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 38px; border-radius: 50%; color: #fff; background: var(--terracotta); font-family: 'Playfair Display', serif; font-size: 1.35rem; }
+.category-tile svg { margin-left: auto; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 30px; color: var(--muted); }
+.pagination .button { color: var(--green); border: 1px solid #d8ded7; background: #fff; cursor: pointer; }
+.pagination .button:disabled { opacity: .45; cursor: not-allowed; }
+@media (max-width: 760px) { .category-grid { grid-template-columns: 1fr; } .pagination { gap: 10px; font-size: .85rem; } }
