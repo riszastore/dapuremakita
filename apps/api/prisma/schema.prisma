@@ -18,9 +18,16 @@ enum Role {
 
 enum ProductStatus {
   DRAFT
-  REVIEW
+  SUBMITTED
+  UNDER_REVIEW
+  REVISION_REQUIRED
+  APPROVED
+  READY_TO_PUBLISH
   ACTIVE
+  SUSPENDED
+  ARCHIVED
   INACTIVE
+  REJECTED
 }
 
 enum LegalDocumentType {
@@ -39,9 +46,13 @@ enum LegalDocumentStatus {
 enum SubmissionStatus {
   DRAFT
   SUBMITTED
-  IN_REVIEW
+  UNDER_REVIEW
   REVISION_REQUIRED
   APPROVED
+  READY_TO_PUBLISH
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
   REJECTED
 }
 
@@ -50,41 +61,58 @@ enum SubmissionPhotoType {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  passwordHash String
-  role         Role
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  partner      Partner?
+  id                  String                 @id @default(cuid())
+  email               String                 @unique
+  name                String
+  passwordHash        String
+  role                Role
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  partner             Partner?
   submissionRevisions SubmissionRevision[]
+  submissionScores    SubmissionScore[]
+  curatorNotes        CuratorNote[]
+  submissionDecisions SubmissionDecision[]
+  finalizedProducts   ProductFinalization[]
+  publishedProducts   ProductPublication[]
+  auditLogs           AuditLog[]
 }
 
 model Category {
-  id        String    @id @default(cuid())
-  name      String
-  slug      String    @unique
-  createdAt DateTime  @default(now())
-  products  Product[]
+  id          String              @id @default(cuid())
+  name        String
+  slug        String              @unique
+  createdAt   DateTime            @default(now())
+  products    Product[]
   submissions ProductSubmission[]
+  finalizations ProductFinalization[]
+}
+
+enum PartnerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
 }
 
 model Partner {
-  id          String    @id @default(cuid())
-  name        String
-  slug        String    @unique
-  description String
-  websiteUrl  String?
-  userId      String?   @unique
-  phone       String?
-  address     String?
-  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  profile     PartnerProfile?
+  id             String           @id @default(cuid())
+  name           String
+  slug           String           @unique
+  description    String
+  websiteUrl     String?
+  userId         String?          @unique
+  phone          String?
+  address        String?
+  status         PartnerStatus    @default(PENDING)
+  user           User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  profile        PartnerProfile?
   legalDocuments LegalDocument[]
-  submissions ProductSubmission[]
-  createdAt   DateTime  @default(now())
-  products    Product[]
+  submissions    ProductSubmission[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  products       Product[]
+  publications   ProductPublication[]
 }
 
 model PartnerProfile {
@@ -118,7 +146,7 @@ model LegalDocument {
 }
 
 model ProductSubmission {
-  id             String           @id @default(cuid())
+  id             String            @id @default(cuid())
   partnerId      String
   name           String
   description    String
@@ -127,16 +155,23 @@ model ProductSubmission {
   capacityAmount Int?
   capacityUnit   String?
   capacityPeriod String?
-  status         SubmissionStatus @default(DRAFT)
+  status         SubmissionStatus  @default(DRAFT)
   submittedAt    DateTime?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  partner         Partner          @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  category        Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  photos          SubmissionPhoto[]
-  revisions       SubmissionRevision[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  partner        Partner           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  category       Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  photos         SubmissionPhoto[]
+  revisions      SubmissionRevision[]
+  scores         SubmissionScore[]
+  notes          CuratorNote[]
+  decisions      SubmissionDecision[]
+  finalization   ProductFinalization?
+  publication    ProductPublication?
+  auditLogs      AuditLog[]
 
   @@index([partnerId, status, updatedAt])
+  @@index([status, updatedAt])
 }
 
 model SubmissionPhoto {
@@ -154,33 +189,143 @@ model SubmissionPhoto {
 }
 
 model SubmissionRevision {
-  id           String           @id @default(cuid())
+  id           String            @id @default(cuid())
   submissionId String
   actorUserId  String
   fromStatus   SubmissionStatus
   toStatus     SubmissionStatus
   note         String?
-  createdAt    DateTime         @default(now())
+  createdAt    DateTime          @default(now())
   submission   ProductSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  actor        User             @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  actor        User              @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
 
   @@index([submissionId, createdAt])
 }
 
+model SubmissionScore {
+  id                    String            @id @default(cuid())
+  submissionId          String
+  curatorUserId         String
+  productFeasibility    Int
+  qualityConsistency    Int
+  legality              Int
+  productionCapacity    Int
+  pricingHpp            Int
+  packagingBranding     Int
+  marketReadiness       Int
+  subtotal              Int
+  total                 Int
+  completionPercent     Int
+  decisionThreshold     Int
+  status                String            @default("PENDING")
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  submission            ProductSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  curator               User              @relation(fields: [curatorUserId], references: [id], onDelete: Restrict)
+
+  @@unique([submissionId, curatorUserId])
+  @@index([submissionId, createdAt])
+}
+
+model CuratorNote {
+  id             String            @id @default(cuid())
+  submissionId   String
+  actorUserId    String
+  note           String
+  reason         String?
+  partnerVisible Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  submission     ProductSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  actor          User              @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([submissionId, createdAt])
+}
+
+model SubmissionDecision {
+  id           String            @id @default(cuid())
+  submissionId String
+  actorUserId  String
+  fromStatus   SubmissionStatus
+  toStatus     SubmissionStatus
+  decision     String
+  reason       String?
+  createdAt    DateTime          @default(now())
+  submission   ProductSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  actor        User              @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([submissionId, createdAt])
+}
+
+model ProductFinalization {
+  id             String            @id @default(cuid())
+  submissionId   String            @unique
+  approvedByUserId String
+  finalName      String
+  slug           String           @unique
+  description    String
+  categoryId     String
+  price          Int
+  imageUrl       String
+  partnerInfo    String?
+  metadata       String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  submission     ProductSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  approver       User              @relation(fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  category       Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([slug])
+}
+
+model ProductPublication {
+  id             String            @id @default(cuid())
+  submissionId   String            @unique
+  productId      String            @unique
+  partnerId      String
+  publishedByUserId String
+  status         ProductStatus     @default(ACTIVE)
+  publishedAt    DateTime          @default(now())
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  submission     ProductSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  product        Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  partner        Partner           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  publisher      User              @relation(fields: [publishedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([status, publishedAt])
+}
+
+model AuditLog {
+  id           String            @id @default(cuid())
+  actorUserId  String?
+  entityType   String
+  entityId     String
+  action       String
+  details      String?
+  createdAt    DateTime          @default(now())
+  submissionId String?
+  submission   ProductSubmission? @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  actor        User?             @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorUserId, createdAt])
+}
+
 model Product {
-  id          String        @id @default(cuid())
+  id          String               @id @default(cuid())
   name        String
-  slug        String        @unique
+  slug        String               @unique
   price       Int
   description String
   imageUrl    String
-  status      ProductStatus @default(DRAFT)
+  status      ProductStatus        @default(DRAFT)
   categoryId  String
   partnerId   String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  category    Category      @relation(fields: [categoryId], references: [id])
-  partner     Partner?      @relation(fields: [partnerId], references: [id])
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  category    Category             @relation(fields: [categoryId], references: [id])
+  partner     Partner?             @relation(fields: [partnerId], references: [id])
+  publication ProductPublication?
 
   @@index([status, categoryId])
 }

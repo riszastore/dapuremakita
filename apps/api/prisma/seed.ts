@@ -2,7 +2,7 @@ import { PrismaClient, ProductStatus, Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: process.env.DOTENV_CONFIG_PATH ?? '../../.env' });
+dotenv.config({ path: process.env.DOTENV_CONFIG_PATH ?? new URL('../../../.env', import.meta.url).pathname });
 if (process.env.NODE_ENV === 'production') throw new Error('Seed is disabled in production');
 
 const prisma = new PrismaClient();
@@ -35,7 +35,7 @@ const products = [
   { name: 'Sambal Kecombrang', slug: 'sambal-kecombrang', price: 38000, description: 'Sambal segar dengan kecombrang pilihan, dibuat dalam batch kecil.', imageUrl: '/images/sambal-kecombrang.jpg', status: ProductStatus.ACTIVE, categoryId: categories[0].id, partnerId: partner.id },
   { name: 'Granola Kelapa Jawa', slug: 'granola-kelapa-jawa', price: 65000, description: 'Granola renyah dengan kelapa dan gula kelapa dari kebun mitra.', imageUrl: '/images/granola-kelapa.jpg', status: ProductStatus.ACTIVE, categoryId: categories[0].id, partnerId: partner.id },
   { name: 'Keranjang Anyam Pagi', slug: 'keranjang-anyam-pagi', price: 145000, description: 'Keranjang serbaguna dari perajin lokal, ringan dan tahan lama.', imageUrl: '/images/keranjang-anyam.jpg', status: ProductStatus.ACTIVE, categoryId: categories[1].id, partnerId: partner.id },
-  { name: 'Teh Rempah Draft', slug: 'teh-rempah-draft', price: 42000, description: 'Produk yang masih dalam proses kurasi.', imageUrl: '/images/teh-rempah.jpg', status: ProductStatus.REVIEW, categoryId: categories[0].id, partnerId: partner.id }
+  { name: 'Teh Rempah Draft', slug: 'teh-rempah-draft', price: 42000, description: 'Produk yang masih dalam proses kurasi.', imageUrl: '/images/teh-rempah.jpg', status: ProductStatus.DRAFT, categoryId: categories[0].id, partnerId: partner.id }
 ];
 for (const product of products) await prisma.product.upsert({ where: { slug: product.slug }, update: product, create: product });
 await prisma.$disconnect();

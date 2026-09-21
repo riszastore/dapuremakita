@@ -43,3 +43,13 @@ Route website: `/`, `/katalog`, `/kategori/:slug`, `/katalog/:slug`, `/tentang`,
 Smoke API setelah database aktif: `curl http://localhost:3000/health`, login dengan cookie jar (`curl -c /tmp/dm.cookies -H 'Origin: http://localhost:5173' -H 'Content-Type: application/json' -d '{"email":"partner@dapuremakita.local","password":"Demo123!"}' http://localhost:3000/auth/login`), lalu panggil `/auth/me` dan endpoint role dengan `-b /tmp/dm.cookies`. Logout memakai `POST /auth/logout` dan header `Origin` yang sama.
 
 Detail scope dan hasil gate Batch 3 ada di [BATCH_3_REPORT.md](BATCH_3_REPORT.md).
+
+## Admin dan kurasi Batch 4
+
+Admin tersedia di `/admin` untuk role `SUPER_ADMIN`, `CURATOR`, dan `OPERATIONS`. CURATOR dapat memulai review, memberi score tujuh dimensi, menulis notes, meminta revisi, menolak, dan menyetujui setelah score mencapai threshold. OPERATIONS mengelola status mitra; finalisasi dan publish dibatasi `SUPER_ADMIN`.
+
+Workflow submission: `SUBMITTED` -> `UNDER_REVIEW` -> `REVISION_REQUIRED` atau `APPROVED` -> `READY_TO_PUBLISH` -> `ACTIVE`. Publish membuat `Product` ACTIVE dan `ProductPublication` dalam satu transaksi; endpoint publik hanya membaca `ProductStatus.ACTIVE`. Finalisasi hanya menyimpan data final, sehingga tidak ada product draft yang dapat menghalangi publish.
+
+Migration Batch 4 memetakan `IN_REVIEW` ke `UNDER_REVIEW` sebelum enum lama dihapus. Migration berikutnya menghapus `ProductStatus.REVIEW` dengan pemetaan aman ke `UNDER_REVIEW`. Jalankan `npx prisma migrate deploy --schema apps/api/prisma/schema.prisma` tanpa reset database. Seed development idempotent dan telah diverifikasi dua kali.
+
+Detail implementasi dan hasil audit/gate Batch 4 ada di [BATCH_4_REPORT.md](BATCH_4_REPORT.md).

@@ -11,7 +11,7 @@ const request = async (path: string, init?: RequestInit) => {
   return data;
 };
 const navigate = (path: string) => { window.history.pushState({}, '', path); window.dispatchEvent(new PopStateEvent('popstate')); };
-const statusLabel: Record<string, string> = { DRAFT: 'Draft', SUBMITTED: 'Dikirim', IN_REVIEW: 'Sedang ditinjau', REVISION_REQUIRED: 'Perlu revisi', APPROVED: 'Disetujui', REJECTED: 'Ditolak' };
+const statusLabel: Record<string, string> = { DRAFT: 'Draft', SUBMITTED: 'Dikirim', UNDER_REVIEW: 'Sedang ditinjau', IN_REVIEW: 'Sedang ditinjau', REVISION_REQUIRED: 'Perlu revisi', APPROVED: 'Disetujui', READY_TO_PUBLISH: 'Siap diterbitkan', ACTIVE: 'Aktif', REJECTED: 'Ditolak' };
 const money = (value: number | null) => value === null ? '-' : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
 
 type Profile = { contactName: string; phone: string; address: string; city: string; province: string; postalCode: string };
