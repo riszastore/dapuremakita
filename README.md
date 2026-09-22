@@ -53,3 +53,17 @@ Workflow submission: `SUBMITTED` -> `UNDER_REVIEW` -> `REVISION_REQUIRED` atau `
 Migration Batch 4 memetakan `IN_REVIEW` ke `UNDER_REVIEW` sebelum enum lama dihapus. Migration berikutnya menghapus `ProductStatus.REVIEW` dengan pemetaan aman ke `UNDER_REVIEW`. Jalankan `npx prisma migrate deploy --schema apps/api/prisma/schema.prisma` tanpa reset database. Seed development idempotent dan telah diverifikasi dua kali.
 
 Detail implementasi dan hasil audit/gate Batch 4 ada di [BATCH_4_REPORT.md](BATCH_4_REPORT.md).
+
+## Order dan checkout Batch 5
+
+Keranjang publik memakai `localStorage` key `dapuremakita.cart.v1` dan mendukung tambah, ubah jumlah, hapus, serta kosongkan. Route web checkout tamu adalah `/cart`, `/checkout`, `/checkout/:orderNumber/bayar`, dan `/order/:orderNumber`. Server selalu mengambil ulang produk ACTIVE dan harga saat `POST /checkout`; field harga atau total dari klien tidak dipercaya. Harga disimpan sebagai integer rupiah pada snapshot `OrderItem`, bersama nama dan slug produk.
+
+Endpoint utama:
+
+- `POST /checkout` membuat order `PENDING_PAYMENT` secara transaksional dengan `idempotencyKey` unik.
+- `POST /orders/:id/payment` menjalankan mock payment sukses/gagal secara idempotent.
+- `GET /orders/:orderNumber` menampilkan status dan riwayat order.
+- `GET /api/admin/orders`, `GET /api/admin/orders/:id`, `PATCH /api/admin/orders/:id/status`, dan `PATCH /api/admin/order-items/:id/assignment` untuk `SUPER_ADMIN`/`OPERATIONS`.
+- `GET /api/partner/orders` dan `PATCH /api/partner/order-items/:id/status` hanya menampilkan item partner yang ditugaskan dan hanya mengizinkan status produksi berikutnya. Item partner lain selalu 404.
+
+Order lifecycle yang diizinkan adalah `PENDING_PAYMENT -> PAID -> PROCESSING -> PRODUCTION -> QC -> READY -> SHIPPED -> DELIVERED`, dengan pembatalan eksplisit sebelum delivered. Semua perubahan admin tercatat di `OrderStatusHistory`; data nama, slug, harga, jumlah, dan total item adalah snapshot immutable. Migration `20260922130000_batch5_orders_checkout` forward-only dan diterapkan dengan `npx prisma migrate deploy`, tanpa reset database. Detail arsitektur dan hasil gate ada di [BATCH_5_REPORT.md](BATCH_5_REPORT.md).

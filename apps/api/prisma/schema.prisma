@@ -60,6 +60,32 @@ enum SubmissionPhotoType {
   INITIAL
 }
 
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  PRODUCTION
+  QC
+  READY
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum ProductionStatus {
+  UNASSIGNED
+  ASSIGNED
+  IN_PRODUCTION
+  QC
+  READY
+}
+
 model User {
   id                  String                 @id @default(cuid())
   email               String                 @unique
@@ -76,6 +102,7 @@ model User {
   finalizedProducts   ProductFinalization[]
   publishedProducts   ProductPublication[]
   auditLogs           AuditLog[]
+  statusHistory       OrderStatusHistory[]
 }
 
 model Category {
@@ -113,6 +140,7 @@ model Partner {
   updatedAt      DateTime         @updatedAt
   products       Product[]
   publications   ProductPublication[]
+  assignedOrderItems OrderItem[]
 }
 
 model PartnerProfile {
@@ -326,6 +354,69 @@ model Product {
   category    Category             @relation(fields: [categoryId], references: [id])
   partner     Partner?             @relation(fields: [partnerId], references: [id])
   publication ProductPublication?
+  orderItems  OrderItem[]
 
   @@index([status, categoryId])
+}
+
+model Order {
+  id                 String              @id @default(cuid())
+  orderNumber        String              @unique
+  idempotencyKey     String              @unique
+  status             OrderStatus         @default(PENDING_PAYMENT)
+  paymentStatus      PaymentStatus       @default(PENDING)
+  customerName       String
+  customerEmail      String
+  customerPhone      String
+  shippingAddress    String
+  shippingCity       String
+  shippingProvince   String
+  shippingPostalCode String
+  subtotalRupiah     Int
+  shippingRupiah     Int
+  totalRupiah        Int
+  paymentReference   String?             @unique
+  paidAt             DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  items              OrderItem[]
+  statusHistory      OrderStatusHistory[]
+
+  @@index([status, createdAt])
+  @@index([customerEmail, createdAt])
+}
+
+model OrderItem {
+  id                  String            @id @default(cuid())
+  orderId             String
+  productId           String?
+  productNameSnapshot String
+  productSlugSnapshot String
+  unitPriceRupiah     Int
+  quantity            Int
+  lineTotalRupiah     Int
+  partnerId           String?
+  productionStatus    ProductionStatus  @default(UNASSIGNED)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  order               Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product             Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  partner             Partner?          @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+  @@index([partnerId, productionStatus, updatedAt])
+  @@index([orderId])
+}
+
+model OrderStatusHistory {
+  id          String      @id @default(cuid())
+  orderId     String
+  fromStatus  OrderStatus?
+  toStatus    OrderStatus
+  actorUserId String?
+  note        String?
+  createdAt   DateTime    @default(now())
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actor       User?       @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, createdAt])
 }

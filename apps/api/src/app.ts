@@ -11,6 +11,7 @@ import { authRouter } from './routes/auth.js';
 import { protectedRouter } from './routes/protected.js';
 import { errorHandler, notFound } from './middleware/errors.js';
 import { publicRouter } from './routes/public.js';
+import { orderRouter } from './routes/order.js';
 
 export const createApp = (auth?: AuthService, catalog?: CatalogRepository) => {
   const prisma = new PrismaClient();
@@ -26,6 +27,7 @@ export const createApp = (auth?: AuthService, catalog?: CatalogRepository) => {
   app.use('/public', publicRouter(catalogRepository));
   app.use('/auth/login', rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false }));
   app.use('/auth', authRouter(authService));
+  app.use('/', orderRouter(prisma, authService));
   app.use('/api', protectedRouter(authService, prisma));
   app.use(notFound);
   app.use(errorHandler);
