@@ -8,6 +8,8 @@ import type { AuthService } from '../services/auth.js';
 import { authenticate, requireRoles, requireSameOrigin } from '../middleware/auth.js';
 import { HttpError } from '../middleware/errors.js';
 import { absoluteObjectPath, ensureObjectParent, ensureUploadRoot, objectKey, removeObject, removeTempFile, uploadRoot } from '../storage.js';
+import { financeQuerySchema } from './finance.js';
+import { FinanceService } from '../services/finance.js';
 
 const profileSchema = z.object({ contactName: z.string().trim().min(2).max(120), phone: z.string().trim().min(8).max(30), address: z.string().trim().min(5).max(240), city: z.string().trim().min(2).max(80), province: z.string().trim().min(2).max(80), postalCode: z.string().regex(/^\d{5}$/) }).strict();
 const submissionSchema = z.object({ name: z.string().trim().min(2).max(120), description: z.string().trim().min(10).max(2000), categoryId: z.string().min(1), hppRupiah: z.number().int().positive().max(2_000_000_000).nullable().optional(), capacityAmount: z.number().int().positive().max(10_000_000).nullable().optional(), capacityUnit: z.string().trim().min(1).max(30).nullable().optional(), capacityPeriod: z.string().trim().min(1).max(30).nullable().optional() }).strict();
@@ -43,6 +45,8 @@ export const partnerRouter = (prisma: PrismaClient, auth: AuthService) => {
 
   router.get('/submissions', async (req, res, next) => { try { const partner = await partnerForUser(prisma, req.user!.id); if (!partner) throw new HttpError(404, 'Partner not found'); const submissions = await prisma.productSubmission.findMany({ where: { partnerId: partner.id }, select: { ...submissionSelect, photos: false, revisions: false }, orderBy: { updatedAt: 'desc' } }); res.json({ submissions }); } catch (error) { next(error); } });
   router.post('/submissions', requireSameOrigin, async (req, res, next) => { try { const values = submissionSchema.parse(req.body); const partner = await partnerForUser(prisma, req.user!.id); if (!partner) throw new HttpError(404, 'Partner not found'); const category = await prisma.category.findFirst({ where: { OR: [{ id: values.categoryId }, { slug: values.categoryId }] }, select: { id: true } }); if (!category) throw new HttpError(400, 'Invalid category'); const submission = await prisma.productSubmission.create({ data: { ...values, categoryId: category.id, partnerId: partner.id, hppRupiah: values.hppRupiah ?? null, capacityAmount: values.capacityAmount ?? null, capacityUnit: values.capacityUnit ?? null, capacityPeriod: values.capacityPeriod ?? null }, select: submissionSelect }); res.status(201).json({ submission }); } catch (error) { next(error); } });
+
+  router.get('/finance', async (req, res, next) => { try { const partner = await partnerForUser(prisma, req.user!.id); if (!partner) throw new HttpError(404, 'Partner not found'); const query = financeQuerySchema.parse(req.query); res.json({ finance: await new FinanceService(prisma).partnerFinance(partner.id, { from: query.from, to: query.to }) }); } catch (error) { next(error); } });
 
   const ownedSubmission = async (req: Parameters<typeof router.get>[1] extends never ? never : any) => { const id = idSchema.parse(req.params.id); return prisma.productSubmission.findFirst({ where: { id, partner: { userId: req.user!.id } }, select: submissionSelect }); };
   router.get('/submissions/:id', async (req, res, next) => { try { const submission = await ownedSubmission(req); if (!submission) throw new HttpError(404, 'Submission not found'); res.json({ submission }); } catch (error) { next(error); } });

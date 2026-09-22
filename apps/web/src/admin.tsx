@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { LayoutDashboard, PackageCheck, ShieldCheck, Users } from 'lucide-react';
+import { LayoutDashboard, PackageCheck, Receipt, ShieldCheck, Users, Wallet } from 'lucide-react';
+import { FinanceView, adminTabs, kindForPath } from './finance';
 
 const API = import.meta.env.VITE_API_URL ?? '';
 const navigate = (path: string) => { window.history.pushState({}, '', path); window.dispatchEvent(new PopStateEvent('popstate')); };
@@ -41,15 +42,27 @@ export function AdminApp({ path }: { path: string }) {
     ['/admin', 'Dashboard', LayoutDashboard],
     ['/admin/mitra', 'Mitra', Users],
     ['/admin/pengajuan', 'Pengajuan', PackageCheck],
+    ['/admin/keuangan', 'Keuangan', Wallet],
+    ['/admin/keuangan/transaksi', 'Transaksi', Receipt],
   ] as const;
+
+  const isFinanceArea = path.startsWith('/admin/keuangan') || path.startsWith('/admin/laporan');
+  const financeKind = isFinanceArea ? kindForPath(path, adminTabs) : 'summary';
+  const financeAllowed = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'OPERATIONS';
 
   const render: Record<string, ReactNode> = {
     dashboard: <AdminDashboard user={currentUser} />,
     mitra: <PartnerList />,
     pengajuan: <SubmissionList />,
+    keuangan: <FinanceView base="/api/admin/finance" kind={financeKind} tabs={adminTabs} canWrite={currentUser.role === 'SUPER_ADMIN'} viewer={currentUser.role} />,
   };
 
-  return <div className="portal-shell"><header className="portal-header"><a className="brand" href="/" onClick={(event) => { event.preventDefault(); navigate('/'); }}>dapuremakita</a><nav className="portal-nav open" aria-label="Navigasi admin">{nav.map(([href, label, Icon]) => <a key={href} className={path === href ? 'active' : ''} href={href} onClick={(event) => { event.preventDefault(); navigate(href); }}><Icon size={17} />{label}</a>)}<button onClick={() => { void request('/auth/logout', { method: 'POST', headers: { Origin: window.location.origin } }).then(() => navigate('/login')); }}><ShieldCheck size={17} />Keluar</button></nav></header><main className="portal-main"><div className="portal-heading"><p className="eyebrow">Admin & kurasi</p><h1>{currentUser?.name ?? 'Tim admin'}</h1></div>{render[area] ?? render.dashboard}</main></div>;
+  const heading = area === 'laporan' ? 'Laporan' : area === 'keuangan' ? 'Keuangan' : null;
+  const body = isFinanceArea
+    ? (financeAllowed ? render.keuangan : <ErrorState message="Akses finance hanya untuk SUPER_ADMIN dan OPERATIONS." />)
+    : (render[area] ?? render.dashboard);
+
+  return <div className="portal-shell"><header className="portal-header"><a className="brand" href="/" onClick={(event) => { event.preventDefault(); navigate('/'); }}>dapuremakita</a><nav className="portal-nav open" aria-label="Navigasi admin">{nav.map(([href, label, Icon]) => <a key={href} className={path === href ? 'active' : ''} href={href} onClick={(event) => { event.preventDefault(); navigate(href); }}><Icon size={17} />{label}</a>)}<button onClick={() => { void request('/auth/logout', { method: 'POST', headers: { Origin: window.location.origin } }).then(() => navigate('/login')); }}><ShieldCheck size={17} />Keluar</button></nav></header><main className="portal-main"><div className="portal-heading"><p className="eyebrow">{heading ?? 'Admin & kurasi'}</p><h1>{heading ?? currentUser?.name ?? 'Tim admin'}</h1>{isFinanceArea && financeAllowed ? <p className="lede">Seluruh angka dihitung dan divalidasi oleh backend.</p> : null}</div>{body}</main></div>;
 }
 
 function AdminDashboard({ user }: { user: { name: string; role: string } }) {

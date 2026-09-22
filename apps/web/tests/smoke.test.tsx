@@ -37,4 +37,38 @@ describe('catalog interaction and states', () => {
 describe('responsive navigation and auth compatibility', () => {
   it('opens and closes mobile navigation with accessible focusable controls', () => { renderPath('/'); const menu = screen.getByRole('button', { name: 'Buka menu' }); menu.focus(); expect(document.activeElement).toBe(menu); fireEvent.click(menu); expect(menu.getAttribute('aria-expanded')).toBe('true'); expect(screen.getByRole('navigation', { name: 'Navigasi utama' }).className).toContain('open'); fireEvent.click(screen.getByRole('button', { name: 'Tutup menu' })); expect(screen.getByRole('button', { name: 'Buka menu' })).toBeTruthy(); });
   it('preserves anonymous login, invalid login, successful login, logout, and session error', async () => { const fetchMock = vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(Promise.resolve(makeResponse({}, 401))).mockReturnValueOnce(Promise.resolve(makeResponse({ error: 'Invalid email or password' }, 401))).mockReturnValueOnce(Promise.resolve(makeResponse({ user: { name: 'Partner Demo', email: 'partner@test.local', role: 'PARTNER' } }))); renderPath('/login'); await screen.findByText('Masuk ke ruang kerja'); fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'partner@test.local' } }); fireEvent.change(screen.getByLabelText('Kata sandi'), { target: { value: 'wrong' } }); fireEvent.click(screen.getByRole('button', { name: /Masuk/ })); expect(await screen.findByRole('alert')).toBeTruthy(); fireEvent.change(screen.getByLabelText('Kata sandi'), { target: { value: 'Demo123!' } }); fireEvent.click(screen.getByRole('button', { name: /Masuk/ })); expect(await screen.findByRole('heading', { name: /Partner Demo/ })).toBeTruthy(); expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(3); cleanup(); vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline')); renderPath('/login'); expect(await screen.findByRole('status')).toBeTruthy(); });
+  it('SUPER_ADMIN login redirects to /admin dashboard automatically', async () => {
+    let meCall = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) { meCall++; return makeResponse(meCall === 1 ? {} : { user: { name: 'Super Admin', email: 'superadmin@dapuremakita.local', role: 'SUPER_ADMIN' } }, meCall === 1 ? 401 : 200); }
+      if (url.endsWith('/auth/login')) return makeResponse({ user: { name: 'Super Admin', email: 'superadmin@dapuremakita.local', role: 'SUPER_ADMIN' } });
+      if (url.includes('/api/admin/overview')) return makeResponse({ stats: { partners: 1, submissions: 1, activeProducts: 1, pendingPartners: 0 }, queue: [] });
+      return makeResponse({}, 404);
+    });
+    renderPath('/login');
+    await screen.findByText('Masuk ke ruang kerja');
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'superadmin@dapuremakita.local' } });
+    fireEvent.change(screen.getByLabelText('Kata sandi'), { target: { value: 'Demo123!' } });
+    fireEvent.click(screen.getByRole('button', { name: /Masuk/ }));
+    await waitFor(() => expect(window.location.pathname).toBe('/admin'));
+    expect(await screen.findByText('Super Admin')).toBeTruthy();
+  });
+  it('OPERATIONS login redirects to /admin dashboard automatically', async () => {
+    let meCall = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/auth/me')) { meCall++; return makeResponse(meCall === 1 ? {} : { user: { name: 'Operations', email: 'operations@dapuremakita.local', role: 'OPERATIONS' } }, meCall === 1 ? 401 : 200); }
+      if (url.endsWith('/auth/login')) return makeResponse({ user: { name: 'Operations', email: 'operations@dapuremakita.local', role: 'OPERATIONS' } });
+      if (url.includes('/api/admin/overview')) return makeResponse({ stats: { partners: 1, submissions: 1, activeProducts: 1, pendingPartners: 0 }, queue: [] });
+      return makeResponse({}, 404);
+    });
+    renderPath('/login');
+    await screen.findByText('Masuk ke ruang kerja');
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'operations@dapuremakita.local' } });
+    fireEvent.change(screen.getByLabelText('Kata sandi'), { target: { value: 'Demo123!' } });
+    fireEvent.click(screen.getByRole('button', { name: /Masuk/ }));
+    await waitFor(() => expect(window.location.pathname).toBe('/admin'));
+    expect(await screen.findByText('Operations')).toBeTruthy();
+  });
 });

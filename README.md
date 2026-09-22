@@ -67,3 +67,19 @@ Endpoint utama:
 - `GET /api/partner/orders` dan `PATCH /api/partner/order-items/:id/status` hanya menampilkan item partner yang ditugaskan dan hanya mengizinkan status produksi berikutnya. Item partner lain selalu 404.
 
 Order lifecycle yang diizinkan adalah `PENDING_PAYMENT -> PAID -> PROCESSING -> PRODUCTION -> QC -> READY -> SHIPPED -> DELIVERED`, dengan pembatalan eksplisit sebelum delivered. Semua perubahan admin tercatat di `OrderStatusHistory`; data nama, slug, harga, jumlah, dan total item adalah snapshot immutable. Migration `20260922130000_batch5_orders_checkout` forward-only dan diterapkan dengan `npx prisma migrate deploy`, tanpa reset database. Detail arsitektur dan hasil gate ada di [BATCH_5_REPORT.md](BATCH_5_REPORT.md).
+
+## Finance dan Nazhir Batch 6
+
+Rantai finance selalu `ORDER -> ORDER ITEM -> OMZET -> HAK PRODUSEN -> MARGIN DAPUREMAKITA -> PAYOUT`, dihitung sepenuhnya oleh backend dalam integer rupiah. Order sah adalah order dengan `paymentStatus = SUCCEEDED` dan `status != CANCELLED`; order gagal, tertunda, dan dibatalkan tidak pernah masuk omzet maupun riwayat transaksi.
+
+- Omzet = `SUM(totalRupiah)` order sah = omzet produk + omzet pengiriman (filter periode memakai `paidAt`).
+- Hak produsen per item = `floor((lineTotal × producerShareBps + 5000) / 10000)`, `producerShareBps` disimpan di `FinanceSetting` (default `8000` = 80%) dan dimaterialisasi sebagai `FinanceAccrual` unik per `orderItemId`.
+- Margin Dapuremakita = `omzet − hak produsen`; identitas `omzet = hak + margin` diperiksa di setiap ringkasan dan laporan.
+- Payout memilih hak `AVAILABLE` milik mitra di dalam transaksi ber-`FOR UPDATE`, menghitung nominal di server, menahannya sebagai `RESERVED`, lalu `COMPLETED` (hak menjadi `PAID`) atau `CANCELLED` (hak kembali tersedia). `idempotencyKey` unik dan payout tidak pernah melebihi hak tersedia.
+- Item order yang sudah memiliki akresi tidak dapat dialihkan ke mitra lain (409), sehingga tidak ada double counting.
+
+Endpoint admin: `GET /api/admin/finance/{summary,transactions,accruals,payouts,payouts/:id,reports/products,reports/partners,reports/impact}` untuk `SUPER_ADMIN`/`OPERATIONS`, serta `POST /api/admin/finance/payouts` dan `POST /api/admin/finance/payouts/:id/{complete,cancel}` hanya untuk `SUPER_ADMIN` dengan `requireSameOrigin`. Mitra membaca angkanya sendiri lewat `GET /api/partner/finance`.
+
+Nazhir memakai `GET /api/nazhir/finance/*` yang hanya berisi route GET untuk `NAZHIR_VIEWER`, ditambah middleware global `readOnlyAccountGuard` yang menolak 403 `Read-only account` pada request non-GET akun `NAZHIR_VIEWER` (di luar `/auth/`), sehingga read-only dijamin di backend. Halaman web: `/admin/keuangan`, `/admin/keuangan/{transaksi,hak,payout}`, `/admin/laporan/{produk,mitra,dampak}`, dan dashboard `/nazhir` beserta tabnya. Migration `20260922150000_batch6_finance` forward-only; detail hasil gate ada di [BATCH_6_REPORT.md](BATCH_6_REPORT.md).
+
+Kebijakan asal request dipusatkan di `apps/api/src/middleware/origin.ts` dan dipakai bersama oleh CORS maupun `requireSameOrigin`: `CORS_ORIGIN`, daftar tambahan `CORS_ORIGINS` (opsional, dipisah koma), origin API itu sendiri, dan padanan loopback `localhost`/`127.0.0.1`/`[::1]` pada port yang sama; bila browser tidak mengirim Origin/Referer, `Sec-Fetch-Site: same-origin|none` diterima. Request lintas situs dan klien tanpa asal tetap 403. Proxy Vite development meneruskan `/auth`, `/api`, `/public`, `/orders`, dan `/health` (jalur checkout memakai alias `POST /api/checkout`, sehingga `GET /checkout` tetap halaman SPA). Login tiap peran, logout/re-login, proteksi write Nazhir, dan matriks origin diuji di `apps/api/tests/login.test.ts` serta lewat runtime acceptance 64 pemeriksaan yang hasilnya dicatat di laporan.

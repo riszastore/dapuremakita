@@ -3,13 +3,14 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { config } from './config.js';
 import { PrismaClient } from '@prisma/client';
 import { PrismaCatalogRepository, PrismaUserRepository, type CatalogRepository } from './repository.js';
 import { AuthService } from './services/auth.js';
 import { authRouter } from './routes/auth.js';
 import { protectedRouter } from './routes/protected.js';
 import { errorHandler, notFound } from './middleware/errors.js';
+import { readOnlyAccountGuard } from './middleware/auth.js';
+import { corsOriginCallback } from './middleware/origin.js';
 import { publicRouter } from './routes/public.js';
 import { orderRouter } from './routes/order.js';
 
@@ -20,9 +21,10 @@ export const createApp = (auth?: AuthService, catalog?: CatalogRepository) => {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
-  app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
+  app.use(cors({ origin: corsOriginCallback, credentials: true }));
   app.use(express.json({ limit: '32kb' }));
   app.use(cookieParser());
+  app.use(readOnlyAccountGuard(authService));
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
   app.use('/public', publicRouter(catalogRepository));
   app.use('/auth/login', rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false }));

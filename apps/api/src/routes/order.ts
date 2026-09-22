@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { AuthService } from '../services/auth.js';
 import { authenticate, requireRoles, requireSameOrigin } from '../middleware/auth.js';
 import { HttpError } from '../middleware/errors.js';
+import { ensureAccrualsForOrder } from '../services/finance.js';
 
 const idSchema = z.string().regex(/^[a-z0-9]{20,}$/i);
 const orderNumberSchema = z.string().regex(/^DM-\d{8}-[A-Z0-9]{6}$/);
@@ -26,7 +27,14 @@ const makeOrderNumber = () => `DM-${new Date().toISOString().slice(0, 10).replac
 
 export const orderRouter = (prisma: PrismaClient, auth: AuthService) => {
   const router = Router();
-  router.post('/checkout', requireSameOrigin, async (req, res, next) => {
+
+  /**
+   * Route tamu (checkout, pembayaran mock, status order) dipasang dua kali: path akar yang
+   * lama dan alias `/api` supaya tetap terjangkau lewat proxy Vite development yang hanya
+   * meneruskan `/api`, `/auth`, `/public`, `/orders`, dan `/health`.
+   */
+  const guestRouter = Router();
+  guestRouter.post('/checkout', requireSameOrigin, async (req, res, next) => {
     try {
       const values = checkoutSchema.parse(req.body);
       const order = await prisma.$transaction(async (tx) => {
@@ -45,7 +53,7 @@ export const orderRouter = (prisma: PrismaClient, auth: AuthService) => {
       res.status(201).json({ order });
     } catch (error) { next(error); }
   });
-  router.post('/orders/:id/payment', requireSameOrigin, async (req, res, next) => {
+  guestRouter.post('/orders/:id/payment', requireSameOrigin, async (req, res, next) => {
     try {
       const id = idSchema.parse(req.params.id); const values = paymentSchema.parse(req.body);
       const result = await prisma.$transaction(async (tx) => {
@@ -53,18 +61,23 @@ export const orderRouter = (prisma: PrismaClient, auth: AuthService) => {
         if (order.paymentStatus !== PaymentStatus.PENDING) return order;
         if (values.outcome === 'failure') return tx.order.update({ where: { id }, data: { paymentStatus: PaymentStatus.FAILED } });
         const updated = await tx.order.update({ where: { id }, data: { paymentStatus: PaymentStatus.SUCCEEDED, status: OrderStatus.PAID, paymentReference: `MOCK-${values.idempotencyKey}`, paidAt: new Date() } });
-        await tx.orderStatusHistory.create({ data: { orderId: id, fromStatus: order.status, toStatus: OrderStatus.PAID, note: 'Pembayaran mock berhasil' } }); return updated;
+        await tx.orderStatusHistory.create({ data: { orderId: id, fromStatus: order.status, toStatus: OrderStatus.PAID, note: 'Pembayaran mock berhasil' } });
+        await ensureAccrualsForOrder(tx, id);
+        return updated;
       });
       res.json({ order: result });
     } catch (error) { next(error); }
   });
-  router.get('/orders/:orderNumber', async (req, res, next) => { try { const number = orderNumberSchema.parse(req.params.orderNumber); const order = await prisma.order.findUnique({ where: { orderNumber: number }, select: orderSelect }); if (!order) throw new HttpError(404, 'Order not found'); res.json({ order }); } catch (error) { next(error); } });
+  guestRouter.get('/orders/:orderNumber', async (req, res, next) => { try { const number = orderNumberSchema.parse(req.params.orderNumber); const order = await prisma.order.findUnique({ where: { orderNumber: number }, select: orderSelect }); if (!order) throw new HttpError(404, 'Order not found'); res.json({ order }); } catch (error) { next(error); } });
+
+  router.use(guestRouter);
+  router.use('/api', guestRouter);
 
   const protectedRouter = Router(); protectedRouter.use(authenticate(auth));
   protectedRouter.get('/admin/orders', requireRoles('SUPER_ADMIN', 'OPERATIONS'), async (req, res, next) => { try { const status = typeof req.query.status === 'string' ? z.nativeEnum(OrderStatus).parse(req.query.status) : undefined; const orders = await prisma.order.findMany({ where: status ? { status } : undefined, orderBy: { createdAt: 'desc' }, take: 100, select: orderSelect }); res.json({ orders }); } catch (error) { next(error); } });
   protectedRouter.get('/admin/orders/:id', requireRoles('SUPER_ADMIN', 'OPERATIONS'), async (req, res, next) => { try { const id = idSchema.parse(req.params.id); const order = await prisma.order.findUnique({ where: { id }, select: orderSelect }); if (!order) throw new HttpError(404, 'Order not found'); res.json({ order }); } catch (error) { next(error); } });
   protectedRouter.patch('/admin/orders/:id/status', requireRoles('SUPER_ADMIN', 'OPERATIONS'), async (req, res, next) => { try { const id = idSchema.parse(req.params.id); const nextStatus = z.nativeEnum(OrderStatus).parse(req.body.status); const order = await prisma.order.findUnique({ where: { id } }); if (!order) throw new HttpError(404, 'Order not found'); if (!orderTransitions[order.status].includes(nextStatus)) throw new HttpError(409, 'Invalid order status transition'); const updated = await prisma.$transaction(async (tx) => { const item = await tx.order.update({ where: { id }, data: { status: nextStatus } }); await tx.orderStatusHistory.create({ data: { orderId: id, fromStatus: order.status, toStatus: nextStatus, actorUserId: req.user!.id, note: typeof req.body.note === 'string' ? req.body.note.slice(0, 300) : null } }); return item; }); res.json({ order: updated }); } catch (error) { next(error); } });
-  protectedRouter.patch('/admin/order-items/:id/assignment', requireRoles('SUPER_ADMIN', 'OPERATIONS'), async (req, res, next) => { try { const id = idSchema.parse(req.params.id); const partnerId = z.string().min(10).nullable().parse(req.body.partnerId); const item = await prisma.orderItem.findUnique({ where: { id } }); if (!item) throw new HttpError(404, 'Order item not found'); if (partnerId && !(await prisma.partner.findUnique({ where: { id: partnerId } }))) throw new HttpError(404, 'Partner not found'); const updated = await prisma.orderItem.update({ where: { id }, data: { partnerId, productionStatus: partnerId ? ProductionStatus.ASSIGNED : ProductionStatus.UNASSIGNED }, include: { partner: { select: { id: true, name: true, slug: true } } } }); res.json({ item: updated }); } catch (error) { next(error); } });
+  protectedRouter.patch('/admin/order-items/:id/assignment', requireRoles('SUPER_ADMIN', 'OPERATIONS'), async (req, res, next) => { try { const id = idSchema.parse(req.params.id); const partnerId = z.string().min(10).nullable().parse(req.body.partnerId); const item = await prisma.orderItem.findUnique({ where: { id } }); if (!item) throw new HttpError(404, 'Order item not found'); if (partnerId && !(await prisma.partner.findUnique({ where: { id: partnerId } }))) throw new HttpError(404, 'Partner not found'); await ensureAccrualsForOrder(prisma, item.orderId); const accrual = await prisma.financeAccrual.findUnique({ where: { orderItemId: item.id } }); if (accrual && accrual.partnerId !== partnerId) throw new HttpError(409, 'Item with recognized producer share cannot be reassigned'); const updated = await prisma.orderItem.update({ where: { id }, data: { partnerId, productionStatus: partnerId ? ProductionStatus.ASSIGNED : ProductionStatus.UNASSIGNED }, include: { partner: { select: { id: true, name: true, slug: true } } } }); res.json({ item: updated }); } catch (error) { next(error); } });
   protectedRouter.get('/partner/orders', requireRoles('PARTNER'), async (req, res, next) => { try { const partner = await prisma.partner.findUnique({ where: { userId: req.user!.id } }); if (!partner) throw new HttpError(404, 'Partner not found'); const items = await prisma.orderItem.findMany({ where: { partnerId: partner.id }, orderBy: { updatedAt: 'desc' }, select: { id: true, orderId: true, productNameSnapshot: true, productSlugSnapshot: true, quantity: true, productionStatus: true, order: { select: { orderNumber: true, status: true, shippingCity: true, shippingProvince: true, shippingPostalCode: true, createdAt: true } } } }); res.json({ items }); } catch (error) { next(error); } });
   protectedRouter.patch('/partner/order-items/:id/status', requireRoles('PARTNER'), async (req, res, next) => { try { const id = idSchema.parse(req.params.id); const nextStatus = z.nativeEnum(ProductionStatus).parse(req.body.status); const partner = await prisma.partner.findUnique({ where: { userId: req.user!.id } }); if (!partner) throw new HttpError(404, 'Partner not found'); const item = await prisma.orderItem.findFirst({ where: { id, partnerId: partner.id } }); if (!item) throw new HttpError(404, 'Order item not found'); if (!productionTransitions[item.productionStatus].includes(nextStatus)) throw new HttpError(409, 'Invalid production status transition'); const updated = await prisma.orderItem.update({ where: { id }, data: { productionStatus: nextStatus } }); res.json({ item: updated }); } catch (error) { next(error); } });
   router.use('/api', protectedRouter);

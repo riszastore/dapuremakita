@@ -1,7 +1,13 @@
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
-dotenv.config({ path: process.env.DOTENV_CONFIG_PATH ?? '../../.env' });
+/**
+ * Path .env selalu relatif terhadap file ini, bukan cwd, sehingga `npm test`,
+ * `npx vitest --root`, dan server dev membaca berkas .env proyek yang sama.
+ */
+const defaultEnvPath = fileURLToPath(new URL('../../../.env', import.meta.url));
+dotenv.config({ path: process.env.DOTENV_CONFIG_PATH ?? defaultEnvPath });
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -9,6 +15,8 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32).default('local-development-secret-change-me-32chars'),
   JWT_EXPIRES_IN: z.string().regex(/^\d+(s|m|h|d)$/).default('15m'),
   CORS_ORIGIN: z.string().url().default('http://localhost:5173'),
+  /** Daftar origin tambahan (pisah koma) untuk preview/forwarded URL; opsional. */
+  CORS_ORIGINS: z.string().optional(),
   DATABASE_URL: z.string().optional()
 });
 const parsed = schema.parse(process.env);
