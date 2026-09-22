@@ -2,8 +2,9 @@ import { mkdir, unlink } from 'node:fs/promises';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { config } from './config.js';
 
-export const uploadRoot = path.resolve(process.env.UPLOAD_DIR ?? './var/uploads');
+export const uploadRoot = path.resolve(config.UPLOAD_DIR);
 mkdirSync(uploadRoot, { recursive: true });
 export const ensureUploadRoot = () => mkdir(uploadRoot, { recursive: true });
 export const objectKey = (folder: string, extension: string) => `${folder}/${randomUUID()}${extension}`;

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { OrderStatus, PaymentStatus, PrismaClient, ProductionStatus } from '@prisma/client';
 import { z } from 'zod';
 import type { AuthService } from '../services/auth.js';
@@ -17,6 +18,7 @@ const checkoutSchema = z.object({
   total: z.number().optional(),
 }).strict();
 const paymentSchema = z.object({ idempotencyKey: z.string().trim().min(16).max(100), outcome: z.enum(['success', 'failure']).default('success') }).strict();
+const sensitiveMutationLimiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: 'draft-8', legacyHeaders: false });
 const orderTransitions: Record<OrderStatus, OrderStatus[]> = {
   PENDING_PAYMENT: [OrderStatus.PAID, OrderStatus.CANCELLED], PAID: [OrderStatus.PROCESSING, OrderStatus.CANCELLED], PROCESSING: [OrderStatus.PRODUCTION, OrderStatus.CANCELLED],
   PRODUCTION: [OrderStatus.QC, OrderStatus.CANCELLED], QC: [OrderStatus.READY, OrderStatus.PRODUCTION, OrderStatus.CANCELLED], READY: [OrderStatus.SHIPPED, OrderStatus.CANCELLED], SHIPPED: [OrderStatus.DELIVERED], DELIVERED: [], CANCELLED: [],
@@ -34,7 +36,7 @@ export const orderRouter = (prisma: PrismaClient, auth: AuthService) => {
    * meneruskan `/api`, `/auth`, `/public`, `/orders`, dan `/health`.
    */
   const guestRouter = Router();
-  guestRouter.post('/checkout', requireSameOrigin, async (req, res, next) => {
+  guestRouter.post('/checkout', sensitiveMutationLimiter, requireSameOrigin, async (req, res, next) => {
     try {
       const values = checkoutSchema.parse(req.body);
       const order = await prisma.$transaction(async (tx) => {
@@ -53,7 +55,7 @@ export const orderRouter = (prisma: PrismaClient, auth: AuthService) => {
       res.status(201).json({ order });
     } catch (error) { next(error); }
   });
-  guestRouter.post('/orders/:id/payment', requireSameOrigin, async (req, res, next) => {
+  guestRouter.post('/orders/:id/payment', sensitiveMutationLimiter, requireSameOrigin, async (req, res, next) => {
     try {
       const id = idSchema.parse(req.params.id); const values = paymentSchema.parse(req.body);
       const result = await prisma.$transaction(async (tx) => {

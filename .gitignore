@@ -9,3 +9,5 @@ coverage/
 .DS_Store
 var/uploads/
 apps/api/var/uploads/
+var/backups/
+*.dump

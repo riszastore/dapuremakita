@@ -1,4 +1,5 @@
 import { Router, type RequestHandler } from 'express';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { FinanceAccrualStatus, PayoutStatus, PrismaClient } from '@prisma/client';
 import type { AuthService } from '../services/auth.js';
@@ -9,6 +10,7 @@ import { FinanceService } from '../services/finance.js';
 const idSchema = z.string().regex(/^[a-zA-Z0-9_-]{10,}$/);
 const FinanceAccrualStatusSchema = z.nativeEnum(FinanceAccrualStatus);
 const PayoutStatusSchema = z.nativeEnum(PayoutStatus);
+const financeMutationLimiter = rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: 'draft-8', legacyHeaders: false });
 
 /** Query gabungan untuk seluruh endpoint finance: range tanggal (paidAt/createdAt) dan paginasi. */
 export const financeQuerySchema = z
@@ -104,7 +106,7 @@ export const adminFinanceRouter = (prisma: PrismaClient, auth: AuthService) => {
   const finance = new FinanceService(prisma);
   readRoutes(router, finance);
 
-  router.post('/payouts', requireSameOrigin, requireFinanceWriter, async (req, res, next) => {
+  router.post('/payouts', financeMutationLimiter, requireSameOrigin, requireFinanceWriter, async (req, res, next) => {
     try {
       const values = payoutCreateSchema.parse(req.body);
       const result = await finance.createPayout({ ...values, actorUserId: req.user!.id });
@@ -112,11 +114,11 @@ export const adminFinanceRouter = (prisma: PrismaClient, auth: AuthService) => {
     } catch (error) { next(error); }
   });
 
-  router.post('/payouts/:id/complete', requireSameOrigin, requireFinanceWriter, async (req, res, next) => {
+  router.post('/payouts/:id/complete', financeMutationLimiter, requireSameOrigin, requireFinanceWriter, async (req, res, next) => {
     try { res.json({ payout: await finance.completePayout(idSchema.parse(req.params.id), req.user!.id) }); } catch (error) { next(error); }
   });
 
-  router.post('/payouts/:id/cancel', requireSameOrigin, requireFinanceWriter, async (req, res, next) => {
+  router.post('/payouts/:id/cancel', financeMutationLimiter, requireSameOrigin, requireFinanceWriter, async (req, res, next) => {
     try { res.json({ payout: await finance.cancelPayout(idSchema.parse(req.params.id), req.user!.id) }); } catch (error) { next(error); }
   });
 
