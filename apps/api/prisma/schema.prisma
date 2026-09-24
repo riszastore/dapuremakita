@@ -485,3 +485,40 @@ model Payout {
   @@index([partnerId, status, createdAt])
   @@index([status, createdAt])
 }
+
+model SiteContent {
+  id                   String   @id
+  logoUrl              String
+  faviconUrl           String
+  heroImageUrl         String
+  headerHomeLabel   String
+  headerAboutLabel     String
+  headerProductsLabel  String
+  headerStoriesLabel   String
+  headerImpactLabel      String
+  headerLoginLabel     String
+  heroEyebrow          String
+  heroTitle            String
+  heroAccent           String
+  heroDescription      String
+  heroPrimaryLabel     String
+  heroSecondaryLabel   String
+  heroQuote            String
+  heroSupportTitle     String
+  heroSupportText      String
+  categoriesEyebrow    String
+  categoriesTitle      String
+  productsEyebrow      String
+  productsTitle        String
+  impactTitle          String
+  impactDescription    String
+  footerDescription    String
+  footerShopLabel      String
+  footerProcessLabel   String
+  footerWaqfLabel      String
+  footerPartnerLabel   String
+  footerWorkspaceLabel String
+  updatedByUserId      String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}

@@ -8,7 +8,13 @@ const api = 'http://localhost:3000';
  * `/orders` (pembayaran/status order). `/checkout` sengaja TIDAK diproxy karena jalur SPA
  * `/checkout` harus tetap dilayani oleh web; frontend memakai alias `POST /api/checkout`.
  */
+const pagesPreview = process.env.GITHUB_PAGES === 'true';
+
 export default defineConfig({
+	base: pagesPreview ? '/dapuremakita/' : '/',
 	plugins: [react()],
-	server: { proxy: { '/auth': api, '/api': api, '/public': api, '/orders': api, '/health': api } }
+	server: {
+		host: '0.0.0.0',
+		proxy: { '/auth': api, '/api': api, '/public': api, '/orders': api, '/health': api, '/uploads': api }
+	}
 });

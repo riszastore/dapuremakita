@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="210" viewBox="0 0 820 210" role="img" aria-labelledby="title desc">
+<title id="title">Dapuremakita</title>
+<desc id="desc">Logo Dapuremakita dengan simbol ibu dan anak membentuk hati, serta teks Dari Dapur, Jadi Harapan.</desc>
+<rect width="820" height="210" fill="none"/>
+<g transform="translate(18 18)">
+<path d="M88 19c-22 9-37 26-44 49-8 26 0 52 17 70 17 18 35 30 53 44 18-15 37-27 54-45 17-18 25-44 16-70-7-21-21-37-41-47-9-4-19-6-29-6-9 0-18 1-26 5Z" fill="#df6a2f"/>
+<path d="M111 49c-14 7-23 20-23 36 0 14 7 27 18 35 8 6 18 9 29 9 10 0 20-3 27-8-11 16-29 29-50 43-19-14-38-27-50-43-12-16-17-36-11-55 6-18 18-32 35-40 5-2 11-4 17-5 3 8 6 18 8 28Z" fill="#f8d8b7"/>
+<circle cx="122" cy="80" r="9" fill="#365f22"/>
+<path d="M113 91c15 2 28 11 37 25-12 11-25 21-38 31-13-10-26-20-38-31 10-15 23-23 39-25Z" fill="#365f22"/>
+<path d="M132 104c10 2 18 8 24 17-9 9-19 17-29 25-10-7-20-15-29-24 8-10 19-16 34-18Z" fill="#f5eee5"/>
+</g>
+<g transform="translate(220 37)">
+<text x="0" y="72" font-family="Arial, Helvetica, sans-serif" font-size="62" font-weight="700" fill="#365f22" letter-spacing="-2">dapuremakita</text>
+<text x="4" y="118" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="600" fill="#df6a2f" letter-spacing="1.2">Dari Dapur, Jadi Harapan.</text>
+</g>
+</svg>

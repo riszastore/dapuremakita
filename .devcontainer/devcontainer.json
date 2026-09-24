@@ -1,0 +1,7 @@
+{
+  "forwardPorts": [3000, 5173],
+  "portsAttributes": {
+    "3000": { "label": "Dapuremakita API", "onAutoForward": "silent" },
+    "5173": { "label": "Dapuremakita Web", "onAutoForward": "openBrowserOnce" }
+  }
+}

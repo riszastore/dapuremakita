@@ -15,7 +15,7 @@ const users = [
   ['partner@dapuremakita.local', 'Partner Demo', Role.PARTNER],
   ['partner.two@dapuremakita.local', 'Partner Dua Demo', Role.PARTNER],
   ['customer@dapuremakita.local', 'Customer Demo', Role.CUSTOMER],
-  ['nazhir@dapuremakita.local', 'Nazhir Viewer Demo', Role.NAZHIR_VIEWER]
+  ['.', 'Nazhir Viewer Demo', Role.NAZHIR_VIEWER]
 ] as const;
 
 const passwordHash = await bcrypt.hash(password, 12);

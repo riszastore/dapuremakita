@@ -11,3 +11,5 @@ var/uploads/
 apps/api/var/uploads/
 var/backups/
 *.dump
+
+.ai-backup/

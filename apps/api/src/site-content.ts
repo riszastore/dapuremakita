@@ -1,0 +1,75 @@
+import { z } from 'zod';
+
+export const SITE_CONTENT_ID = 'main';
+
+export const siteContentDefaults = {
+  id: SITE_CONTENT_ID,
+  logoUrl: '/images/logo-dapuremakita.webp',
+  faviconUrl: '/images/vapicon.ico',
+  heroImageUrl: '/images/hero.webp',
+  headerHomeLabel: 'Beranda',
+  headerAboutLabel: 'Tentang',
+  headerProductsLabel: 'Produk',
+  headerStoriesLabel: 'Cerita Mitra',
+  headerImpactLabel: 'Dampak',
+  headerLoginLabel: 'Masuk',
+  heroEyebrow: 'Gerakan Pemberdayaan Usaha Rumahan',
+  heroTitle: 'Temukan karya',
+  heroAccent: 'dari dapur mereka.',
+  heroDescription: 'Setiap produk di Dapuremakita dibuat oleh emak-emak pelaku usaha rumahan yang kami dampingi agar lebih siap, lebih percaya diri, dan makin berdaya.',
+  heroPrimaryLabel: 'Lihat Produk',
+  heroSecondaryLabel: 'Dukung Program',
+  heroQuote: '“Dari dapur kecil, lahir kisah besar untuk keluarga.”',
+  heroSupportTitle: 'Bersama, kita kuatkan',
+  heroSupportText: 'usaha rumahan di seluruh Indonesia.',
+  categoriesEyebrow: 'Jelajahi Kategori',
+  categoriesTitle: 'Temukan karya dari dapur mereka.',
+  productsEyebrow: 'Pilihan Minggu Ini',
+  productsTitle: 'Produk yang punya cerita.',
+  impactTitle: 'Gambaran dampak yang ingin kita hadirkan bersama.',
+  impactDescription: 'Target program ini menunjukkan arah pertumbuhan yang ingin dicapai bersama mitra dan pendukung.',
+  footerDescription: 'Membantu usaha rumahan menjadi lebih siap, lebih dipercaya, dan lebih mudah ditemukan.',
+  footerShopLabel: 'Belanja produk',
+  footerProcessLabel: 'Cara kami bekerja',
+  footerWaqfLabel: 'Wakaf produktif',
+  footerPartnerLabel: 'Jadi mitra',
+  footerWorkspaceLabel: 'Ruang kerja',
+} as const;
+
+const text = (max = 240) => z.string().trim().min(1).max(max);
+const asset = z.string().trim().min(1).max(500).refine((value) => value.startsWith('/') || /^https:\/\//.test(value), 'Invalid asset URL');
+
+export const siteContentSchema = z.object({
+  logoUrl: asset,
+  faviconUrl: asset,
+  heroImageUrl: asset,
+  headerHomeLabel: text(40),
+  headerAboutLabel: text(40),
+  headerProductsLabel: text(40),
+  headerStoriesLabel: text(40),
+  headerImpactLabel: text(40),
+  headerLoginLabel: text(40),
+  heroEyebrow: text(100),
+  heroTitle: text(120),
+  heroAccent: text(120),
+  heroDescription: text(600),
+  heroPrimaryLabel: text(60),
+  heroSecondaryLabel: text(60),
+  heroQuote: text(240),
+  heroSupportTitle: text(100),
+  heroSupportText: text(160),
+  categoriesEyebrow: text(100),
+  categoriesTitle: text(160),
+  productsEyebrow: text(100),
+  productsTitle: text(160),
+  impactTitle: text(220),
+  impactDescription: text(400),
+  footerDescription: text(400),
+  footerShopLabel: text(80),
+  footerProcessLabel: text(80),
+  footerWaqfLabel: text(80),
+  footerPartnerLabel: text(80),
+  footerWorkspaceLabel: text(80),
+}).strict();
+
+export type SiteContentInput = z.infer<typeof siteContentSchema>;

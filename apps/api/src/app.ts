@@ -15,6 +15,7 @@ import { publicRouter } from './routes/public.js';
 import { orderRouter } from './routes/order.js';
 import { requestObservability } from './middleware/observability.js';
 import { config } from './config.js';
+import { uploadRoot } from './storage.js';
 
 export const createApp = (auth?: AuthService, catalog?: CatalogRepository, prisma = new PrismaClient()) => {
   const authService = auth ?? new AuthService(new PrismaUserRepository(prisma));
@@ -28,6 +29,7 @@ export const createApp = (auth?: AuthService, catalog?: CatalogRepository, prism
   app.use(express.json({ limit: '32kb' }));
   app.use(cookieParser());
   app.use(readOnlyAccountGuard(authService));
+  app.use('/uploads', express.static(uploadRoot, { fallthrough: false, maxAge: '1d', immutable: false }));
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
   app.get('/health/ready', async (_req, res) => {
     try {
@@ -37,7 +39,7 @@ export const createApp = (auth?: AuthService, catalog?: CatalogRepository, prism
       res.status(503).json({ status: 'not_ready' });
     }
   });
-  app.use('/public', publicRouter(catalogRepository));
+  app.use('/public', publicRouter(catalogRepository, prisma));
   app.use('/auth/login', rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false }));
   app.use('/auth', authRouter(authService));
   app.use('/', orderRouter(prisma, authService));

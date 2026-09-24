@@ -5,10 +5,12 @@ import { authenticate, requireRoles } from '../middleware/auth.js';
 import { partnerRouter } from './partner.js';
 import { adminRouter } from './admin.js';
 import { adminFinanceRouter, nazhirFinanceRouter } from './finance.js';
+import { siteContentAdminRouter } from './site-content.js';
 
 export const protectedRouter = (auth: AuthService, prisma: PrismaClient) => {
   const router = Router();
   router.use(authenticate(auth));
+  router.use('/admin/site-content', siteContentAdminRouter(prisma, auth));
   router.use('/admin/finance', adminFinanceRouter(prisma, auth));
   router.use('/admin', adminRouter(prisma, auth));
   router.get('/partner/overview', requireRoles('PARTNER'), (req, res) => res.json({ area: 'partner', viewer: req.user }));
